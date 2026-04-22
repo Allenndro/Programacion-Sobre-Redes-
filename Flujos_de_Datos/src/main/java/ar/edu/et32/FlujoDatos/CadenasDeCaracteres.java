@@ -48,10 +48,9 @@ public class CadenasDeCaracteres {
 					sb.toString();		//devuelve el texto completo construido
 					
 					Utils.getOut().println( sb.toString() );
-					Utils.getOut().printf("Dato: %s %d %f", dato1 , dato2, dato3);
+					
 					Utils.getOut().flush();
 					
-					//alternativa a Split
 					StringTokenizer st = new StringTokenizer( linea , "\\+");
 					//linea= 78+2=80
 					while( st.hasMoreTokens() ) {

@@ -1,7 +1,7 @@
 package ar.edu.et32.main;
 
 
-import ar.edu.et32.FlujoDatos.EjemploEjercicios;
+import ar.edu.et32.FlujoDatos.EjerciciosGuia1;
 import ar.edu.et32.FlujoDatos.Utils;
 
 public class main {
@@ -10,7 +10,7 @@ public class main {
 
 		Utils lec = new Utils();
 		//coleciones col = new coleciones();
-		EjemploEjercicios ejercicios = new EjemploEjercicios();
+		EjerciciosGuia1 ejercicios = new EjerciciosGuia1();
 		//CadenasDeCaracteres textos = new CadenasDeCaracteres();
 		
 		//ejercicios.Guia1_Ej7();
