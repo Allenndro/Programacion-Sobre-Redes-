@@ -1,0 +1,148 @@
+package examen;
+
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.io.BufferedReader;
+
+
+public class cliente {
+
+public static void main(String[] args) {
+
+	BufferedReader teclado = new BufferedReader(
+			new InputStreamReader(
+					System.in,
+					StandardCharsets.UTF_8
+					)
+);
+
+			System.out.println(
+				colores.CYAN
+		+ "====================================\n"
+		+ " CLIENTE DE CHAT\n"
+		+ "===================================="
+		+ colores.RESET
+		);
+
+	try {
+
+		System.out.print(colores.VIOLETA + "Ingrese IP: ");
+			String ip = teclado.readLine().trim();
+		
+		System.out.print(colores.GREEN + "Ingrese puerto: ");
+			int puerto = Integer.parseInt(teclado.readLine().trim());
+
+			Socket socket = new Socket(ip, puerto);
+
+		System.out.println(colores.AMARILLO
+				+ "Conectado al servidor " + ip + ":" + puerto);
+
+		BufferedReader entrada = new BufferedReader(
+				new InputStreamReader(
+						socket.getInputStream(),
+						StandardCharsets.UTF_8
+						)
+				);
+
+		PrintWriter salida = new PrintWriter(
+				new OutputStreamWriter(
+						socket.getOutputStream(),
+						StandardCharsets.UTF_8
+						),
+	true
+);
+
+		final boolean[] usarCifrado = {false};
+
+			Thread hiloReceptor = new Thread(() -> {
+
+		try {
+
+			String mensaje;
+
+		while ((mensaje = entrada.readLine()) != null) {
+
+			mensaje = cifrado.descifrar(mensaje);
+			if(mensaje.equals("/PING_CHECK")) {
+				String respuesta =  cifrado.cifrar("/PONG_ALIVE");
+					synchronized (salida) {
+						salida.println(respuesta);
+					}
+					continue;
+			}
+			
+			System.out.println(mensaje);
+			}
+
+}	 	catch (IOException e) {
+
+		if (!socket.isClosed()) {
+			System.out.println("Conexión interrumpida.");
+		}
+
+		} finally {
+			System.out.println("Conexión con servidor finalizada.");
+		}
+			});
+
+		Thread hiloEmisor = new Thread(() -> {
+
+			try {
+
+String mensaje;
+
+while ((mensaje = teclado.readLine()) != null) {
+
+if (mensaje.equalsIgnoreCase("/cifrar")) {
+usarCifrado[0] = true;
+
+System.out.println(colores.VERDE
++ "\n\tCifrado AES activado"
++ colores.RESET);
+continue;
+}
+
+if (mensaje.equalsIgnoreCase("/plano")) {
+usarCifrado[0] = false;
+
+System.out.println(colores.AMARILLO
++ "\n\tTexto plano activado"
++ colores.RESET);
+continue;
+}
+
+String envio = mensaje;
+
+if (usarCifrado[0]) {
+envio = cifrado.cifrar(mensaje);
+}
+
+salida.println(envio);
+
+if (mensaje.trim().equalsIgnoreCase("/logout")) {
+break;
+}
+}
+
+} catch (IOException e) {
+System.out.println("Error al leer el teclado.");
+}
+});
+
+hiloEmisor.setDaemon(true);
+
+hiloReceptor.start();
+hiloEmisor.start();
+
+hiloReceptor.join();
+
+socket.close();
+
+System.out.println("Cliente finalizado.");
+
+} catch (Exception e) {
+System.out.println("Error: " + e.getMessage());
+}
+}
+}

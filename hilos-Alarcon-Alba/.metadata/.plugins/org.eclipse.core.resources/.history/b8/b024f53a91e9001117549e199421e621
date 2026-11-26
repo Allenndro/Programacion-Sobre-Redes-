@@ -1,0 +1,234 @@
+package examen;
+
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class cliente {
+
+    public static void main(String[] args) {
+
+        BufferedReader teclado = new BufferedReader(
+                new InputStreamReader(
+                        System.in,
+                        StandardCharsets.UTF_8
+                )
+        );
+
+        AtomicBoolean usarCifrado = new AtomicBoolean(false);
+
+        System.out.println(
+                colores.AZUL
+                + "\n===================================="
+                + "\n          CLIENTE DE CHAT"
+                + "\n===================================="
+                + colores.RESET
+        );
+
+        try {
+
+            System.out.print(
+                    colores.VIOLETA + "\nIngrese IP: "
+                    + colores.RESET
+            );
+
+            String ip = teclado.readLine().trim();
+
+            System.out.print(
+                    colores.GREEN + "Ingrese puerto: "
+                    + colores.RESET
+            );
+
+            int puerto = Integer.parseInt(
+                    teclado.readLine().trim()
+            );
+
+            Socket socket = new Socket(ip, puerto);
+
+            BufferedReader entrada = new BufferedReader(
+                    new InputStreamReader(
+                            socket.getInputStream(),
+                            StandardCharsets.UTF_8
+                    )
+            );
+
+            PrintWriter salida = new PrintWriter(
+                    new OutputStreamWriter(
+                            socket.getOutputStream(),
+                            StandardCharsets.UTF_8
+                    ),
+                    true
+            );
+
+            System.out.println(
+                    colores.GREEN
+                    + "\n\tConectado al servidor "
+                    + ip + ":" + puerto
+                    + colores.RESET
+            );
+
+            System.out.println(
+                    colores.AMARILLO
+                    + "\n\t/cifrar = Activar AES"
+                    + "\n\t/plano = Desactivar AES"
+                    + "\n\t/hi = Solicitar bienvenida"
+                    + "\n\t/logout = Desconectar"
+                    + colores.RESET
+            );
+
+            Thread hiloReceptor = new Thread(() -> {
+
+                try {
+
+                    String mensaje;
+
+                    while ((mensaje = entrada.readLine()) != null) {
+
+                        String original = null;
+
+                        if (mensaje.contains(":")) {
+                            original = cifrado.descifrar(mensaje);
+                        }
+
+                        if (original != null) {
+                            mensaje = original;
+                        }
+
+                        System.out.println(
+                                colores.AZUL
+                                + "\n\t[SERVIDOR] "
+                                + mensaje
+                                + colores.RESET
+                        );
+                    }
+
+                } catch (IOException e) {
+
+                    if (!socket.isClosed()) {
+                        System.out.println(
+                                colores.AMARILLO
+                                + "\n\tConexión interrumpida"
+                                + colores.RESET
+                        );
+                    }
+
+                } finally {
+
+                    System.out.println(
+                            colores.AMARILLO
+                            + "\n\tServidor desconectado"
+                            + colores.RESET
+                    );
+                }
+            });
+
+            Thread hiloEmisor = new Thread(() -> {
+
+                try {
+
+                    String mensaje;
+
+                    while ((mensaje = teclado.readLine()) != null) {
+
+                        if (mensaje.equalsIgnoreCase("/cifrar")) {
+
+                            usarCifrado.set(true);
+
+                            System.out.println(
+                                    colores.GREEN
+                                    + "\n\tCifrado AES activado"
+                                    + colores.RESET
+                            );
+
+                            continue;
+                        }
+
+                        if (mensaje.equalsIgnoreCase("/plano")) {
+
+                            usarCifrado.set(false);
+
+                            System.out.println(
+                                    colores.AMARILLO
+                                    + "\n\tModo texto plano activado"
+                                    + colores.RESET
+                            );
+
+                            continue;
+                        }
+
+                        String envio = mensaje;
+
+                        if (usarCifrado.get()) {
+                            envio = cifrado.cifrar(mensaje);
+                        }
+
+                        if (envio == null) {
+                            System.out.println(
+                                    colores.AMARILLO
+                                    + "\n\tNo se pudo enviar el mensaje"
+                                    + colores.RESET
+                            );
+                            continue;
+                        }
+
+                        salida.println(envio);
+
+                        if (salida.checkError()) {
+                            System.out.println(
+                                    colores.AMARILLO
+                                    + "\n\tError de conexión"
+                                    + colores.RESET
+                            );
+                            break;
+                        }
+
+                        System.out.println(
+                                colores.GREEN
+                                + "\n\t[YO] "
+                                + mensaje
+                                + colores.RESET
+                        );
+
+                        if (mensaje.trim()
+                                .equalsIgnoreCase("/logout")) {
+                            break;
+                        }
+                    }
+
+                } catch (IOException e) {
+
+                    System.out.println(
+                            colores.AMARILLO
+                            + "\n\tError leyendo el teclado"
+                            + colores.RESET
+                    );
+                }
+            });
+
+            hiloEmisor.setDaemon(true);
+
+            hiloReceptor.start();
+            hiloEmisor.start();
+
+            hiloReceptor.join();
+
+            socket.close();
+
+            System.out.println(
+                    colores.VIOLETA
+                    + "\n\tCliente finalizado"
+                    + colores.RESET
+            );
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    colores.AMARILLO
+                    + "\n\tNo se pudo establecer la conexión: "
+                    + e.getMessage()
+                    + colores.RESET
+            );
+        }
+    }
+}

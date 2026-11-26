@@ -1,0 +1,191 @@
+package examen;
+
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+public class sevidor {
+
+    private static final int PUERTO = 5000;
+
+    private static final List<ManejadorCliente> clientes =
+            new CopyOnWriteArrayList<>();
+
+    private static final String bienvenida =
+            "BIENVENIDO AL SERVIDOR LOCAL";
+
+    public static void main(String[] args) {
+
+        try (ServerSocket servidor = new ServerSocket(PUERTO)) {
+
+            System.out.println(
+                    colores.VERDE
+                    + "\n===================================="
+                    + "\n       SERVIDOR LOCAL INICIADO"
+                    + "\n===================================="
+                    + "\n\tPuerto: " + PUERTO
+                    + "\n\tEsperando clientes..."
+                    + colores.RESET
+            );
+
+            while (true) {
+
+                Socket socket = servidor.accept();
+
+                System.out.println(
+                        colores.AMARILLO
+                        + "\n\tNuevo cliente: "
+                        + socket.getRemoteSocketAddress()
+                        + colores.RESET
+                );
+
+                ManejadorCliente manejador =
+                        new ManejadorCliente(socket);
+
+                Thread hilo = new Thread(manejador);
+
+                hilo.start();
+            }
+
+        } catch (IOException e) {
+
+            System.out.println(
+                    colores.ROJO
+                    + "\n\tError del servidor: "
+                    + e.getMessage()
+                    + colores.RESET
+            );
+        }
+    }
+
+    public static void difundir(String mensaje) {
+
+        for (ManejadorCliente cliente : clientes) {
+            cliente.enviar(mensaje);
+        }
+    }
+
+    static class ManejadorCliente implements Runnable {
+
+        private final Socket socket;
+        private PrintWriter salida;
+        private volatile boolean cifradoActivo = false;
+
+        public ManejadorCliente(Socket socket) {
+            this.socket = socket;
+        }
+
+        public synchronized void enviar(String mensaje) {
+
+            if (salida != null) {
+
+                String envio = mensaje;
+
+                if (cifradoActivo) {
+                    envio = cifrado.cifrar(mensaje);
+                }
+
+                if (envio != null) {
+                    salida.println(envio);
+                }
+            }
+        }
+
+        @Override
+        public void run() {
+
+            try (
+                Socket conexion = socket;
+
+                BufferedReader entrada = new BufferedReader(
+                        new InputStreamReader(
+                                conexion.getInputStream(),
+                                StandardCharsets.UTF_8
+                        )
+                );
+
+                PrintWriter escritor = new PrintWriter(
+                        new OutputStreamWriter(
+                                conexion.getOutputStream(),
+                                StandardCharsets.UTF_8
+                        ),
+                        true
+                )
+            ) {
+
+                salida = escritor;
+
+                salida.println(bienvenida);
+
+                clientes.add(this);
+
+                String mensaje;
+
+                while ((mensaje = entrada.readLine()) != null) {
+
+                    String original = null;
+
+                    if (mensaje.contains(":")) {
+                        original = cifrado.descifrar(mensaje);
+                    }
+
+                    cifradoActivo = original != null;
+
+                    if (original != null) {
+                        mensaje = original;
+                    }
+
+                    mensaje = mensaje.trim();
+
+                    if (mensaje.equalsIgnoreCase("/hi")) {
+
+                        enviar(bienvenida);
+
+                    } else if (
+                            mensaje.equalsIgnoreCase("/logout")
+                    ) {
+
+                        enviar("DESCONECTADO");
+                        break;
+
+                    } else if (mensaje.startsWith("/")) {
+
+                        enviar("COMANDO DESCONOCIDO");
+
+                    } else if (!mensaje.isEmpty()) {
+
+                        System.out.println(
+                                colores.CIAN
+                                + "\n\t[CHAT] "
+                                + mensaje
+                                + colores.RESET
+                        );
+
+                        difundir(mensaje);
+                    }
+                }
+
+            } catch (IOException e) {
+
+                System.out.println(
+                        colores.AMARILLO
+                        + "\n\tCliente desconectado"
+                        + colores.RESET
+                );
+
+            } finally {
+
+                clientes.remove(this);
+
+                System.out.println(
+                        colores.MORADO
+                        + "\n\tClientes conectados: "
+                        + clientes.size()
+                        + colores.RESET
+                );
+            }
+        }
+    }
+}
